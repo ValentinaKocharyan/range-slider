@@ -2,8 +2,8 @@ import {
   Component, Input, Output, EventEmitter,
   ElementRef, OnInit, HostListener, SimpleChanges, OnChanges
 } from '@angular/core';
-import { Utilities } from './utilities';
-import { SliderHandlerEnum } from './slider-handler.enum';
+import {Utilities} from './utilities';
+import {SliderHandlerEnum} from './slider-handler.enum';
 
 @Component({
   selector: 'npn-slider',
@@ -12,29 +12,47 @@ import { SliderHandlerEnum } from './slider-handler.enum';
 })
 export class NpnSliderComponent extends Utilities implements OnInit, OnChanges {
   private sliderModel = [0, 0, 0];
-  private step = 1;
-  private sliderWidth = 0;
+  public handlerX: number[] = [0, 0];
   private totalDiff = 0;
-  private startClientX = 0;
   private startPleft = 0;
   private startPRight = 0;
+  public currentHandlerIndex = 0;
+  private startClientX = 0;
+  public isTouchEventStart = false;
+  public isHandlerActive = false;
+  public isMouseEventStart = false;
+  public initValues: number[] = [];
   private minValue: number;
   private maxValue: number;
-  private minSelected: number;
-  private maxSelected: number;
-  private sliderInitiated = false;
-
-  public initValues: number[] = [];
   public currentValues: number[] = [0, 0];
-  public handlerX: number[] = [0, 0];
-  public isHandlerActive = false;
-  public isTouchEventStart = false;
-  public isMouseEventStart = false;
-  public currentHandlerIndex = 0;
-  public stepIndicatorPositions = [];
-  public isDisabled = false;
   public hideTooltip = false;
   public hideValues = false;
+  private minSelected: number;
+  private maxSelected: number;
+
+  private step = 1;
+  private sliderInitiated = false;
+  public stepIndicatorPositions = [];
+  private sliderWidth = 0;
+
+  public handlerXArr: number[][] = [[0, 20], [40, 100]];
+  private sliderModelArr: number[][] = [[0, 0, 0], [0, 0, 0]];
+  private totalDiffArr: number[] = [0, 0];
+  private startPleftArr: number[] = [0, 0];
+  private startPRightArr: number[] = [0, 0];
+  public currentHandlerIndexArr: number[] = [0, 0];
+  private startClientXArr: number[] = [0, 0];
+  public isTouchEventStartArr: boolean[] = [false, false];
+  public isHandlerActiveArr: boolean[] = [false, false];
+  public isMouseEventStartArr: boolean[] = [false, false];
+  public initValuesArr: number[][] = [[], []];
+  private minValueArr: number[] = [];
+  private maxValueArr: number[] = [];
+  public currentValuesArr: number[][] = [[0, 0], [0, 0]];
+  public hideTooltipArr = [false, false];
+  public hideValuesArr = [false, false];
+  private minSelectedArr: number[] = [];
+  private maxSelectedArr: number[] = [];
 
   public handlerIndex = SliderHandlerEnum;
 
@@ -45,30 +63,39 @@ export class NpnSliderComponent extends Utilities implements OnInit, OnChanges {
   @Input('min')
   set setMinValues(value: number) {
     if (!isNaN(value)) {
-      this.minValue = Number(value);
+      for (let j = 0; j < this.handlerXArr.length; j++) {
+        this.minValueArr[j] = Number(value);
+      }
     }
   }
 
   @Input('max')
   set setMaxValues(value: number) {
     if (!isNaN(value)) {
-      this.maxValue = Number(value);
+      for (let j = 0; j < this.handlerXArr.length; j++) {
+        this.maxValueArr[j] = Number(value);
+      }
     }
   }
 
   @Input('minSelected')
   set setMinSelectedValues(value: number) {
-    if (!isNaN(value) && this.minSelected !== Number(value)) {
-      this.minSelected = Number(value);
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      if (!isNaN(value) && this.minSelectedArr[j] !== Number(value)) {
+        this.minSelectedArr[j] = Number(value);
+      }
     }
   }
 
   @Input('maxSelected')
   set setMaxSelectedValues(value: number) {
-    if (!isNaN(value) && this.maxSelected !== Number(value)) {
-      this.maxSelected = Number(value);
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      if (!isNaN(value) && this.maxSelectedArr[j] !== Number(value)) {
+        this.maxSelectedArr[j] = Number(value);
+      }
     }
   }
+
   @Input('step')
   set stepValue(value: number) {
     if (!isNaN(value)) {
@@ -78,19 +105,25 @@ export class NpnSliderComponent extends Utilities implements OnInit, OnChanges {
 
   @Input() showStepIndicator = false;
   @Input() multiRange = true;
+
   @Input('hide-tooltip')
   set setHideTooltip(value: boolean) {
-    this.hideTooltip = this.toBoolean(value);
-  }
-  @Input('hide-values')
-  set setHideValues(value: boolean) {
-    this.hideValues = this.toBoolean(value);
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      this.hideTooltipArr[j] = this.toBoolean(value);
+    }
   }
 
-  @Input('disabled')
+  @Input('hide-values')
+  set setHideValues(value: boolean) {
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      this.hideValuesArr[j] = this.toBoolean(value);
+    }
+  }
+
+  /*@Input('disabled')
   set setDisabled(value: string) {
     this.isDisabled = this.toBoolean(value, 'disabled');
-  }
+  }*/
 
   @Output() onChange = new EventEmitter<number[]>();
 
@@ -128,53 +161,56 @@ export class NpnSliderComponent extends Utilities implements OnInit, OnChanges {
   private resetModel() {
     this.validateSliderValues();
     // Setting the model values
-    this.sliderModel = [
-      this.currentValues[0] - this.initValues[0],
-      this.currentValues[1] - this.currentValues[0],
-      this.initValues[1] - this.currentValues[1]
-    ];
-
-    this.totalDiff = this.sliderModel.reduce((prevValue, curValue) => prevValue + curValue, 0);
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      this.sliderModelArr[j] = [
+        this.currentValuesArr[j][0] - this.initValuesArr[j][0],
+        this.currentValuesArr[j][1] - this.currentValuesArr[j][0],
+        this.initValuesArr[j][1] - this.currentValuesArr[j][1]
+      ];
+      this.totalDiffArr[j] = this.sliderModelArr[j].reduce((prevValue, curValue) => prevValue + curValue, 0);
+      this.setHandlerPosition(j);
+    }
 
     // Validation for slider step
-    if (this.totalDiff % this.step !== 0) {
-      const newStep = this.findNextValidStepValue(this.totalDiff, this.step);
-      console.warn('Invalid step value "' + this.step + '" : and took "' + newStep + '" as default step');
-      this.step = newStep;
-    }
-    this.initializeStepIndicator();
-    this.setHandlerPosition();
+    /* if (this.totalDiff % this.step !== 0) {
+       const newStep = this.findNextValidStepValue(this.totalDiff, this.step);
+       console.warn('Invalid step value "' + this.step + '" : and took "' + newStep + '" as default step');
+       this.step = newStep;
+     }*/
+    /*this.initializeStepIndicator();*/
   }
 
   /*Method to do validation of init and seleted range values*/
   private validateSliderValues() {
-    if (this.isNullOrEmpty(this.minValue) || this.isNullOrEmpty(this.maxValue)) {
-      this.updateInitValues([0, 0]);
-      this.updateCurrentValue([0, 0], true);
-    } else if (this.minValue > this.maxValue) {
-      this.updateInitValues([0, 0]);
-      this.updateCurrentValue([0, 0], true);
-    } else {
-      this.initValues = [this.minValue, this.maxValue];
-      /*
-      * Validation for Selected range values
-      */
-      if (this.isNullOrEmpty(this.minSelected) || this.minSelected < this.minValue || this.minSelected > this.maxValue) {
-        this.minSelected = this.minValue;
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      if (this.isNullOrEmpty(this.minValueArr[j]) || this.isNullOrEmpty(this.maxValueArr[j])) {
+        this.updateInitValues([[0, 0], [0, 0]]);
+        this.updateCurrentValue([0, 0], true);
+      } else if (this.minValueArr[j] > this.maxValueArr[j]) {
+        this.updateInitValues([[0, 0], [0, 0]]);
+        this.updateCurrentValue([0, 0], true);
+      } else {
+        this.initValuesArr[j] = [this.minValueArr[j], this.maxValueArr[j]];
+        /*
+        * Validation for Selected range values
+        */
+        if (this.isNullOrEmpty(this.minSelectedArr[j]) || this.minSelectedArr[j] < this.minValueArr[j] || this.minSelectedArr[j] > this.maxValueArr[j]) {
+          this.minSelectedArr[j] = this.minValueArr[j];
+        }
+        if (this.isNullOrEmpty(this.maxSelectedArr[j]) || this.maxSelectedArr[j] < this.minValueArr[j] || this.maxSelectedArr[j] > this.maxValueArr[j]) {
+          this.maxSelectedArr[j] = this.maxValueArr[j];
+        }
+        if (this.minSelectedArr[j] > this.maxSelectedArr[j]) {
+          this.minSelectedArr[j] = this.minValueArr[j];
+          this.maxSelectedArr[j] = this.maxValueArr[j];
+        }
+        this.updateCurrentValue([this.minSelectedArr[j], this.maxSelectedArr[j]], true);
       }
-      if (this.isNullOrEmpty(this.maxSelected) || this.maxSelected < this.minValue || this.maxSelected > this.maxValue) {
-        this.maxSelected = this.maxValue;
-      }
-      if (this.minSelected > this.maxSelected) {
-        this.minSelected = this.minValue;
-        this.maxSelected = this.maxValue;
-      }
-      this.updateCurrentValue([this.minSelected, this.maxSelected], true);
     }
   }
 
   /*Method to add step inidicator to slider */
-  private initializeStepIndicator() {
+  /*private initializeStepIndicator() {
     if (this.showStepIndicator) {
       this.stepIndicatorPositions.length = 0;
       const numOfStepIndicators = this.totalDiff / this.step;
@@ -192,47 +228,54 @@ export class NpnSliderComponent extends Utilities implements OnInit, OnChanges {
     } else {
       this.stepIndicatorPositions.length = 0;
     }
-  }
+  }*/
 
   /*Method to set current selected values */
   private updateCurrentValue(arrayValue: number[], privateChange: boolean = false) {
-    this.minSelected = this.currentValues[0] = arrayValue[0];
-    this.maxSelected = this.currentValues[1] = arrayValue[1];
-    if (!privateChange) {
-      this.onChange.emit((this.multiRange) ? this.currentValues : [this.currentValues[0]]);
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      this.minSelectedArr[j] = this.currentValuesArr[j][0] = arrayValue[0];
+      this.minSelectedArr[j] = this.currentValuesArr[j][1] = arrayValue[1];
+      if (!privateChange) {
+        this.onChange.emit(this.currentValuesArr[j]);
+      }
     }
   }
 
   /*Method to set current selected values */
-  private updateInitValues(arrayValue: number[]) {
-    this.minValue = this.initValues[0] = arrayValue[0];
-    this.maxValue = this.initValues[1] = arrayValue[1];
+  private updateInitValues(arrayValue: number[][]) {
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      this.minValueArr[j] = this.initValuesArr[j][0] = arrayValue[j][0];
+      this.maxValueArr[j] = this.initValuesArr[j][1] = arrayValue[j][1];
+    }
   }
 
   /*Method to set handler position */
-  private setHandlerPosition() {
+  private setHandlerPosition(index = 0) {
     let runningTotal = 0;
-    // Updating selected values : current values
-    this.updateCurrentValue([
-      this.initValues[0] + this.sliderModel[0],
-      this.initValues[1] - this.sliderModel[2]
-    ]);
-    /*Setting handler position */
-    for (let i = 0, len = this.sliderModel.length - 1; i < len; i++) {
-      runningTotal += this.sliderModel[i];
-      this.handlerX[i] = (runningTotal / this.totalDiff) * 100;
-    }
+
+      // Updating selected values : current values
+      this.updateCurrentValue([
+        this.initValuesArr[index][0] + this.sliderModelArr[index][0],
+        this.initValuesArr[index][1] - this.sliderModelArr[index][2]
+      ]);
+      /*Setting handler position */
+      for (let i = 0, len = this.sliderModelArr[index].length - 1; i < len; i++) {
+        runningTotal += this.sliderModelArr[index][i];
+        this.handlerXArr[index][i] = (runningTotal / this.totalDiffArr[index]) * 100;
+        console.log(this.handlerXArr[index][i], index, i);
+      }
   }
 
   /*Method to set model array values - will try to refine the values using step */
-  private setModelValue(index: number, value: number) {
+  private setModelValue(index: number, value: number, hendlerIndex) {
     if (this.step > 1) {
       value = Math.round(value / this.step) * this.step;
     }
-    this.sliderModel[index] = value;
+    this.sliderModelArr[hendlerIndex][index] = value;
   }
 
   /*Method to disable handler movement*/
+
   /*Execute on events:
   * on-mouseup
   * on-panend
@@ -240,53 +283,62 @@ export class NpnSliderComponent extends Utilities implements OnInit, OnChanges {
   @HostListener('document:mouseup')
   @HostListener('document:panend')
   setHandlerActiveOff() {
-    this.isMouseEventStart = false;
-    this.isTouchEventStart = false;
-    this.isHandlerActive = false;
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      this.isMouseEventStartArr[j] = false;
+      this.isTouchEventStartArr[j] = false;
+      this.isHandlerActiveArr[j] = false;
+    }
   }
 
   /*Method to detect start draging handler*/
+
   /*Execute on events:
   * on-mousedown
   * on-panstart
   */
   public setHandlerActive(event: any, handlerIndex: number) {
     event.preventDefault();
-    if (!this.isDisabled) {
-
+    for (let j = 0; j < this.handlerXArr.length; j++) {
       if (!this.isNullOrEmpty(event.clientX)) {
-        this.startClientX = event.clientX;
-        this.isMouseEventStart = true;
-        this.isTouchEventStart = false;
+        this.startClientXArr[j] = event.clientX;
+        this.isMouseEventStartArr[j] = true;
+        this.isTouchEventStartArr[j] = false;
       } else if (!this.isNullOrEmpty(event.deltaX)) {
-        this.startClientX = event.deltaX;
-        this.isTouchEventStart = true;
-        this.isMouseEventStart = false;
+        this.startClientXArr[j] = event.deltaX;
+        this.isTouchEventStartArr[j] = true;
+        this.isMouseEventStartArr[j] = false;
       }
-      if (this.isMouseEventStart || this.isTouchEventStart) {
-        this.currentHandlerIndex = handlerIndex;
-        this.startPleft = this.sliderModel[handlerIndex];
-        this.startPRight = this.sliderModel[handlerIndex + 1];
-        this.isHandlerActive = true;
+      if (this.isMouseEventStartArr[j] || this.isTouchEventStartArr[j]) {
+        this.currentHandlerIndexArr[j] = handlerIndex;
+        this.startPleftArr[j] = this.sliderModelArr[j][handlerIndex];
+        this.startPRightArr[j] = this.sliderModelArr[j][handlerIndex + 1];
+        this.isHandlerActiveArr[j] = true;
       }
     }
   }
 
 
   /*Method to calculate silder handler movement */
+
   /*Execute on events:
   * on-mousemove
   * on-panmove
   */
   public handlerSliding(event: any) {
-    if ((this.isMouseEventStart && event.clientX) || (this.isTouchEventStart && event.deltaX)) {
-      const movedX = Math.round(((event.clientX || event.deltaX) - this.startClientX) / this.sliderWidth * this.totalDiff);
-      const nextPLeft = this.startPleft + movedX;
-      const nextPRight = this.startPRight - movedX;
-      if (nextPLeft >= 0 && nextPRight >= 0) {
-        this.setModelValue(this.currentHandlerIndex, nextPLeft);
-        this.setModelValue(this.currentHandlerIndex + 1, nextPRight);
-        this.setHandlerPosition();
+   const clientX = event.clientX;
+    console.log(event);
+    for (let j = 0; j < this.handlerXArr.length; j++) {
+      const deltaX = event.deltaX;
+
+      if ((this.isMouseEventStartArr[j] && clientX) || (this.isTouchEventStartArr[j] && deltaX)) {
+        const movedX = Math.round(((clientX || deltaX) - this.startClientXArr[j]) / this.sliderWidth * this.totalDiffArr[j]);
+        const nextPLeft = this.startPleftArr[j] + movedX;
+        const nextPRight = this.startPRightArr[j] - movedX;
+        if (nextPLeft >= 0 && nextPRight >= 0) {
+          this.setModelValue(this.currentHandlerIndexArr[j], nextPLeft, j);
+          this.setModelValue(this.currentHandlerIndexArr[j] + 1, nextPRight, j);
+          this.setHandlerPosition(j);
+        }
       }
     }
   }
